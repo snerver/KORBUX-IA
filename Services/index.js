@@ -9,8 +9,20 @@
  */
 
 const path = require("path");
-const fs = require("fs"); // Módulo nativo de Node.js para interactuar con el sistema de archivos.
-const logger = require(path.join(__dirname, "..", "config", "logger.js")); // Importa tu logger
+const fs = require("fs");
+
+// Logger con fallback por si la ruta no existe (evita que el índice muera)
+let logger;
+try {
+  logger = require(path.join(__dirname, "..", "config", "logger.js"));
+} catch {
+  // Si no hay logger, usamos console para no detener la carga
+  logger = {
+    info: console.log,
+    warn: console.warn,
+    error: console.error
+  };
+}
 
 /**
  * Objeto que contendrá todas las instancias de los servicios cargados.
@@ -27,41 +39,54 @@ const servicesPath = __dirname;
 logger.info(" [Services Index] Iniciando carga dinámica de servicios...");
 
 try {
-  // Leer todos los archivos en la carpeta de servicios.
-  const serviceFiles = fs.readdirSync(servicesPath);
+  // Leer todos los elementos en la carpeta de servicios.
+  const entries = fs.readdirSync(servicesPath);
 
-  for (const file of serviceFiles) {
-    // Ignorar el archivo index.js y cualquier archivo que no sea .js.
-    if (file === "index.js" || !file.endsWith(".js")) {
+  for (const entry of entries) {
+    // Ignorar el propio index.js y cualquier elemento que no sea archivo .js
+    if (entry === "index.js" || !entry.endsWith(".js")) {
       continue;
     }
 
-    // Obtener el nombre del servicio (ej. 'chatService' de 'chatService.js').
-    const serviceName = path.basename(file, ".js");
+    const serviceFilePath = path.join(servicesPath, entry);
 
-    // Construir la ruta completa al archivo del servicio.
-    const serviceFilePath = path.join(servicesPath, file);
+    // Verificar que realmente sea un archivo (no un subdirectorio)
+    try {
+      if (!fs.lstatSync(serviceFilePath).isFile()) {
+        continue;
+      }
+    } catch (statError) {
+      // Si no podemos leer sus metadatos, lo ignoramos
+      continue;
+    }
+
+    // Obtener el nombre del servicio (ej. 'chatService' de 'chatService.js')
+    const serviceName = path.basename(entry, ".js");
+
+    // Convertir a camelCase para la propiedad (primera letra minúscula)
+    const camelCaseServiceName =
+      serviceName.charAt(0).toLowerCase() + serviceName.slice(1);
 
     try {
-      // Importar el servicio y asignarlo al objeto 'services'.
-      // Convertir el nombre del archivo a camelCase para el nombre de la propiedad.
-      const camelCaseServiceName =
-        serviceName.charAt(0).toLowerCase() + serviceName.slice(1);
+      // Cargar el servicio
       services[camelCaseServiceName] = require(serviceFilePath);
       logger.info(
         ` [Services Index] Servicio '${serviceName}' cargado exitosamente.`
       );
-    } catch (e) {
+    } catch (err) {
+      const mensaje = err?.message || err;
       logger.error(
-        ` [Services Index] Error al cargar el servicio '${serviceName}' desde '${serviceFilePath}': ${e.message}`
+        ` [Services Index] Error al cargar el servicio '${serviceName}' desde '${serviceFilePath}': ${mensaje}`
       );
-      services[serviceName] = null; // Asignar null si falla la carga para evitar errores de referencia.
+      // Asignar null a la misma clave camelCase para mantener la interfaz
+      services[camelCaseServiceName] = null;
     }
   }
-} catch (e) {
+} catch (err) {
+  const mensaje = err?.message || err;
   logger.error(
     " [Services Index] Error crítico al leer la carpeta de servicios:",
-    e.message
+    mensaje
   );
 }
 
