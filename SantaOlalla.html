@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Santa Olalla · Laboratorio científico</title>
+
+  <!-- Favicon (será corregido por JS) -->
+  <link id="dynamic-favicon" rel="icon" href="" type="image/png" />
+
+  <!-- LokiJS (base de datos local) -->
+  <script src="https://cdn.jsdelivr.net/npm/lokijs@1.5.12/build/lokijs.min.js"></script>
+
+  <!-- Estilos unificados -->
+  <style>
+    /* ===== RESET & VARIABLES ===== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    }
+
+    :root {
+      --bg-body: #f9fafb;
+      --bg-nav: #ffffff;
+      --bg-sidebar: #f3f4f6;
+      --bg-chat: #ffffff;
+      --border-light: #e5e7eb;
+      --text-primary: #111827;
+      --text-secondary: #4b5563;
+      --text-muted: #6b7280;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      --radius-md: 0.75rem;
+      --radius-lg: 1rem;
+    }
+
+    body.dark {
+      --bg-body: #1e1e2f;
+      --bg-nav: #2a2a3c;
+      --bg-sidebar: #252537;
+      --bg-chat: #1a1a2a;
+      --border-light: #3a3a50;
+      --text-primary: #f1f5f9;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+    }
+
+    body {
+      background-color: var(--bg-body);
+      color: var(--text-primary);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      line-height: 1.5;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    /* ===== NAVEGACIÓN LATERAL IZQUIERDA ===== */
+    .nav {
+      width: 88px;
+      background-color: var(--bg-nav);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.2rem 0.5rem;
+      border-right: 1px solid var(--border-light);
+      box-shadow: var(--shadow-sm);
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+
+    .logo {
+      font-weight: 700;
+      font-size: 1.4rem;
+      letter-spacing: -0.5px;
+      color: var(--accent);
+      text-decoration: none;
+      margin-bottom: 2rem;
+      padding: 0.25rem;
+      transition: opacity 0.2s;
+    }
+
+    .logo:hover {
+      opacity: 0.8;
+    }
+
+    .nav-icons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      width: 100%;
+      align-items: center;
+      flex: 1;
+    }
+
+    .nav-icons a {
+      display: block;
+      width: 100%;
+      text-align: center;
+      padding: 0.6rem 0.2rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-decoration: none;
+      border-radius: 12px;
+      background-color: transparent;
+      transition: background-color 0.15s, color 0.15s;
+      word-break: break-word;
+    }
+
+    .nav-icons a:hover {
+      background-color: var(--border-light);
+      color: var(--text-primary);
+    }
+
+    .nav-icons a.active {
+      background-color: var(--accent);
+      color: white;
+    }
+
+    .nav-bottom {
+      margin-top: auto;
+      padding-top: 1rem;
+      width: 100%;
+    }
+
+    #theme {
+      width: 100%;
+      background: transparent;
+      border: 1px solid var(--border-light);
+      color: var(--text-primary);
+      padding: 0.5rem 0.2rem;
+      border-radius: 30px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    #theme:hover {
+      background-color: var(--border-light);
+    }
+
+    #theme span {
+      pointer-events: none;
+    }
+
+    /* ===== CONTENEDOR PRINCIPAL ===== */
+    .main {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 280px;
+      background-color: var(--bg-sidebar);
+      border-right: 1px solid var(--border-light);
+      display: flex;
+      flex-direction: column;
+      padding: 1.25rem 1rem;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    #new-chat {
+      background-color: var(--accent);
+      color: white;
+      font-weight: 600;
+      border: none;
+      padding: 0.75rem 1rem;
+      border-radius: 30px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      transition: background 0.2s;
+      box-shadow: var(--shadow-sm);
+    }
+
+    #new-chat:hover {
+      background-color: var(--accent-hover);
+    }
+
+    .recent-title {
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      padding-left: 0.25rem;
+    }
+
+    #chats {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    #chats li {
+      padding: 0.6rem 0.75rem;
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: background 0.15s;
+    }
+
+    #chats li:hover {
+      background-color: var(--border-light);
+    }
+
+    /* ===== ÁREA DE CHAT ===== */
+    .chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--bg-chat);
+      min-width: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .santa-container {
+      padding: 2rem 2.5rem;
+      max-width: 1300px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .module {
+      background: var(--bg-sidebar);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-lg);
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+
+    .module-header {
+      padding: 1.25rem 1.8rem;
+      border-bottom: 1px solid var(--border-light);
+      background: var(--bg-chat);
+    }
+
+    .module-header h2 {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .module-content {
+      padding: 1.8rem;
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    .full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      display: block;
+      color: var(--text-secondary);
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 0.8rem 1rem;
+      border-radius: 12px;
+      border: 1px solid var(--border-light);
+      background: var(--bg-body);
+      color: var(--text-primary);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border 0.15s, box-shadow 0.15s;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .actions {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      padding: 0.8rem 1.8rem;
+      border-radius: 40px;
+      border: none;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--bg-body);
+      color: var(--accent);
+      border: 1px solid var(--border-light);
+    }
+
+    .btn-secondary:hover {
+      background: var(--border-light);
+    }
+
+    .output {
+      background: var(--bg-chat);
+      border: 1px solid var(--border-light);
+      border-radius: 16px;
+      padding: 1.5rem;
+    }
+
+    .output strong {
+      display: block;
+      margin-bottom: 1rem;
+      color: var(--accent);
+      font-size: 1rem;
+    }
+
+    .placeholder {
+      min-height: 120px;
+      background: var(--bg-body);
+      border-radius: 12px;
+      padding: 1.5rem;
+      color: var(--text-secondary);
+      border: 1px dashed var(--border-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .log {
+      margin-top: 0.8rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    /* Responsive */
+    @media (max-width: 880px) {
+      body {
+        flex-direction: column;
+      }
+
+      .nav {
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+        padding: 0.5rem 1rem;
+        border-right: none;
+        border-bottom: 1px solid var(--border-light);
+        overflow-x: auto;
+        justify-content: space-between;
+      }
+
+      .logo {
+        margin-bottom: 0;
+        margin-right: 0.5rem;
+        font-size: 1.3rem;
+      }
+
+      .nav-icons {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        flex: 1;
+        justify-content: flex-start;
+      }
+
+      .nav-icons a {
+        width: auto;
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+      }
+
+      .nav-bottom {
+        margin-top: 0;
+        padding-top: 0;
+        width: auto;
+      }
+
+      #theme {
+        width: auto;
+        padding: 0.4rem 1rem;
+      }
+
+      .main {
+        flex-direction: column;
+        height: calc(100vh - 70px);
+      }
+
+      .sidebar {
+        width: 100%;
+        max-height: 140px;
+        border-right: none;
+        border-bottom: 1px solid var(--border-light);
+        padding: 0.75rem;
+      }
+
+      .chat-area {
+        height: auto;
+        flex: 1;
+      }
+
+      .santa-container {
+        padding: 1.5rem 1rem;
+      }
+
+      .row {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background-color: var(--border-light);
+      border-radius: 20px;
+    }
+
+    *:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    button,
+    a {
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Barra lateral fija (navegación) -->
+  <nav class="nav" aria-label="Navegación principal" role="navigation">
+    <a class="logo" id="logo-link" href="#" aria-label="Korbux inicio">Korbux</a>
+
+    <!-- Accesos a agentes (generados dinámicamente) -->
+    <div class="nav-icons" id="nav-links-container" aria-label="Agentes disponibles"></div>
+
+    <!-- Botón de tema -->
+    <div class="nav-bottom">
+      <button id="theme" type="button" aria-pressed="false" aria-label="Cambiar tema">
+        <span>Tema</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Área principal -->
+  <main class="main" id="main-content">
+
+    <!-- Sidebar de chats recientes -->
+    <aside class="sidebar" aria-label="Chats recientes">
+      <button id="new-chat" type="button" aria-label="Crear nuevo chat">
+        <span>+</span> Nuevo Chat
+      </button>
+      <h2 class="recent-title" id="recent-chats-title">Chats recientes</h2>
+      <ul id="chats" aria-live="polite" aria-labelledby="recent-chats-title"></ul>
+    </aside>
+
+    <!-- Contenido científico Santa Olalla -->
+    <section class="chat-area" aria-label="Laboratorio científico Santa Olalla">
+      <div class="santa-container">
+
+        <!-- Módulo: Física de partículas -->
+        <div class="module" id="modulo-fisica">
+          <div class="module-header">
+            <h2>⚛️ Física de partículas</h2>
+          </div>
+          <div class="module-content">
+            <div class="row">
+              <div><label for="energia-colision">Energía de colisión (GeV)</label><input id="energia-colision"
+                  type="number" min="0" step="0.1" placeholder="Ej. 13.6" /></div>
+              <div><label for="particulas">Tipo de partículas</label><select id="particulas">
+                  <option value="protones" selected>Protones</option>
+                  <option value="electrones">Electrones</option>
+                  <option value="ion-plomo">Iones de plomo</option>
+                  <option value="muones">Muones</option>
+                </select></div>
+            </div>
+            <div class="row">
+              <div><label for="intensidad-fe">Intensidad del haz (10¹¹ partículas)</label><input id="intensidad-fe"
+                  type="number" min="0" step="1" placeholder="Ej. 1.1" /></div>
+              <div><label for="duracion-fe">Duración (s)</label><input id="duracion-fe" type="number" min="0" step="0.1"
+                  placeholder="Ej. 10" /></div>
+            </div>
+            <div class="actions">
+              <button class="btn btn-primary" id="simular-colision">Simular colisión</button>
+              <button class="btn btn-secondary" id="reset-fisica">Limpiar</button>
+            </div>
+            <div class="output full">
+              <strong>Resultado físico:</strong>
+              <div id="salida-fisica" class="placeholder">[aquí se visualizaría la colisión de partículas]</div>
+              <div id="log-fisica" class="log"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Módulo: Química -->
+        <div class="module" id="modulo-quimica">
+          <div class="module-header">
+            <h2>🧪 Simulaciones químicas</h2>
+          </div>
+          <div class="module-content">
+            <div class="row">
+              <div><label for="reactivo-a">Reactivo A (fórmula)</label><input id="reactivo-a" type="text"
+                  placeholder="Ej. H2O2" /></div>
+              <div><label for="reactivo-b">Reactivo B (fórmula)</label><input id="reactivo-b" type="text"
+                  placeholder="Ej. KI" /></div>
+            </div>
+            <div class="row">
+              <div><label for="temperatura">Temperatura (°C)</label><input id="temperatura" type="number" step="0.1"
+                  placeholder="Ej. 25" /></div>
+              <div><label for="presion">Presión (atm)</label><input id="presion" type="number" step="0.01"
+                  placeholder="Ej. 1" /></div>
+            </div>
+            <div class="row">
+              <div class="full"><label for="protocolo">Protocolo / condiciones</label><textarea id="protocolo"
+                  placeholder="Describe método, catalizadores, disolventes, tiempos, etc."></textarea></div>
+            </div>
+            <div class="actions">
+              <button class="btn btn-primary" id="simular-quimica">Simular reacción</button>
+              <button class="btn btn-secondary" id="reset-quimica">Limpiar</button>
+            </div>
+            <div class="output full">
+              <strong>Resultado químico:</strong>
+              <div id="salida-quimica" class="placeholder">[aquí se visualizaría la evolución de la reacción]</div>
+              <div id="log-quimica" class="log"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Módulo: Biología / ADN -->
+        <div class="module" id="modulo-biologia">
+          <div class="module-header">
+            <h2>🧬 Biología y ADN</h2>
+          </div>
+          <div class="module-content">
+            <div class="row">
+              <div class="full"><label for="nombre-muestra">Nombre de la muestra</label><input id="nombre-muestra"
+                  type="text" placeholder="Ej. Muestra-HELA-2026" /></div>
+            </div>
+            <div class="row">
+              <div class="full"><label for="cadena-adn">Cadena de ADN (A,T,C,G)</label><textarea id="cadena-adn"
+                  placeholder="Ej. ATGCGTACCTGA..."></textarea></div>
+            </div>
+            <div class="row">
+              <div><label for="organismo">Organismo</label><input id="organismo" type="text"
+                  placeholder="Ej. Homo sapiens" /></div>
+              <div><label for="notas-biologicas">Notas</label><input id="notas-biologicas" type="text"
+                  placeholder="Origen, tejido, etc." /></div>
+            </div>
+            <div class="actions">
+              <button class="btn btn-primary" id="guardar-adn">Guardar registro</button>
+              <button class="btn btn-secondary" id="reset-biologia">Limpiar</button>
+            </div>
+            <div class="output full">
+              <strong>Registro biológico:</strong>
+              <div id="salida-biologia" class="placeholder">[aquí se mostraría el resumen del registro]</div>
+              <div id="log-biologia" class="log"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Módulo: Astrofísica -->
+        <div class="module" id="modulo-astro">
+          <div class="module-header">
+            <h2>🌌 Astrofísica computacional</h2>
+          </div>
+          <div class="module-content">
+            <div class="row">
+              <div><label for="sistema">Sistema / cuerpo celeste</label>
+                <select id="sistema">
+                  <option value="mercurio">Mercurio</option>
+                  <option value="venus">Venus</option>
+                  <option value="tierra" selected>Tierra</option>
+                  <option value="marte">Marte</option>
+                  <option value="jupiter">Júpiter</option>
+                  <option value="saturno">Saturno</option>
+                  <option value="urano">Urano</option>
+                  <option value="neptuno">Neptuno</option>
+                  <option value="pluton">Plutón</option>
+                  <option value="luna">Luna</option>
+                  <option value="io">Io</option>
+                  <option value="europa">Europa</option>
+                  <option value="ganimedes">Ganímedes</option>
+                  <option value="calisto">Calisto</option>
+                  <option value="titan">Titán</option>
+                  <option value="encelado">Encélado</option>
+                  <option value="triton">Tritón</option>
+                  <option value="sol">Sol</option>
+                  <option value="alpha-centauri">Alpha Centauri</option>
+                  <option value="sagitario-a">Sagitario A*</option>
+                  <option value="cygnus-x1">Cygnus X-1</option>
+                  <option value="halley">Cometa Halley</option>
+                  <option value="via-lactea">Vía Láctea</option>
+                </select>
+              </div>
+              <div><label for="escala">Escala</label><select id="escala">
+                  <option value="real" selected>Real</option>
+                  <option value="reducida">Reducida</option>
+                  <option value="expandida">Expandida</option>
+                </select></div>
+            </div>
+            <div class="row">
+              <div><label for="paso-tiempo">Paso de tiempo (s)</label><input id="paso-tiempo" type="number" min="0"
+                  step="0.01" placeholder="Ej. 0.1" /></div>
+              <div><label for="duracion-sim">Duración simulación (s)</label><input id="duracion-sim" type="number"
+                  min="0" step="1" placeholder="Ej. 1000" /></div>
+            </div>
+            <div class="actions">
+              <button class="btn btn-primary" id="simular-astro">Simular dinámica</button>
+              <button class="btn btn-secondary" id="reset-astro">Limpiar</button>
+            </div>
+            <div class="output full">
+              <strong>Resultado astrofísico:</strong>
+              <div id="salida-astro" class="placeholder">[aquí se visualizaría la dinámica orbital/relativista]</div>
+              <div id="log-astro" class="log"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Módulo: Minerales -->
+        <div class="module" id="modulo-minerales">
+          <div class="module-header">
+            <h2>💎 Minerales y composición química</h2>
+          </div>
+          <div class="module-content">
+            <div class="row">
+              <div><label for="nombre-mineral">Nombre del mineral</label><input id="nombre-mineral" type="text"
+                  placeholder="Ej. Cuarzo" /></div>
+              <div><label for="formula-mineral">Fórmula química</label><input id="formula-mineral" type="text"
+                  placeholder="Ej. SiO₂" /></div>
+            </div>
+            <div class="row">
+              <div class="full"><label for="descripcion-mineral">Descripción</label><textarea id="descripcion-mineral"
+                  placeholder="Ej. Mineral abundante..."></textarea></div>
+            </div>
+            <div class="actions">
+              <button class="btn btn-primary" id="guardar-mineral">Guardar mineral</button>
+              <button class="btn btn-secondary" id="reset-mineral">Limpiar</button>
+            </div>
+            <div class="output full">
+              <strong>Registro mineralógico:</strong>
+              <div id="salida-mineral" class="placeholder">[aquí se mostraría la información del mineral]</div>
+              <div id="log-mineral" class="log"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Módulo: Geología -->
+        <div class="module" id="modulo-geologia">
+          <div class="module-header">
+            <h2>⛰️ Geología</h2>
+          </div>
+          <div class="module-content">
+            <div class="row">
+              <div><label for="nombre-roca">Nombre de la roca</label><input id="nombre-roca" type="text"
+                  placeholder="Ej. Granito" /></div>
+              <div><label for="tipo-roca">Tipo</label><select id="tipo-roca">
+                  <option value="ignea">Ígnea</option>
+                  <option value="sedimentaria">Sedimentaria</option>
+                  <option value="metamorfica">Metamórfica</option>
+                </select></div>
+            </div>
+            <div class="row">
+              <div><label for="composicion-roca">Composición</label><input id="composicion-roca" type="text"
+                  placeholder="Ej. Cuarzo, feldespato, mica" /></div>
+              <div><label for="dureza-roca">Dureza (Mohs)</label><input id="dureza-roca" type="number" min="1" max="10"
+                  step="0.1" /></div>
+            </div>
+            <div class="row">
+              <div class="full"><label for="descripcion-roca">Descripción</label><textarea id="descripcion-roca"
+                  placeholder="Ej. Roca ígnea plutónica..."></textarea></div>
+            </div>
+            <div class="actions">
+              <button class="btn btn-primary" id="guardar-roca">Guardar roca</button>
+              <button class="btn btn-secondary" id="reset-roca">Limpiar</button>
+            </div>
+            <div class="output full">
+              <strong>Registro geológico:</strong>
+              <div id="salida-roca" class="placeholder">[aquí se mostraría la información de la roca]</div>
+              <div id="log-roca" class="log"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Módulo: Meteorología -->
+        <div class="module" id="modulo-meteorologia">
+          <div class="module-header">
+            <h2>🌩️ Meteorología</h2>
+          </div>
+          <div class="module-content">
+            <div class="row">
+              <div><label for="fenomeno">Fenómeno</label><select id="fenomeno">
+                  <option value="tormenta">Tormenta</option>
+                  <option value="huracan">Huracán</option>
+                  <option value="frente-frio">Frente frío</option>
+                  <option value="ola-calor">Ola de calor</option>
+                </select></div>
+              <div><label for="temperatura-met">Temperatura (°C)</label><input id="temperatura-met" type="number"
+                  step="0.1" placeholder="Ej. 28" /></div>
+            </div>
+            <div class="row">
+              <div><label for="presion-met">Presión (hPa)</label><input id="presion-met" type="number" step="0.1"
+                  placeholder="Ej. 1013" /></div>
+              <div><label for="humedad-met">Humedad (%)</label><input id="humedad-met" type="number" min="0" max="100"
+                  step="0.1" placeholder="Ej. 70" /></div>
+            </div>
+            <div class="row">
+              <div class="full"><label for="viento-met">Velocidad del viento (km/h)</label><input id="viento-met"
+                  type="number" step="0.1" placeholder="Ej. 20" /></div>
+            </div>
+            <div class="actions">
+              <button class="btn btn-primary" id="simular-meteorologia">Simular fenómeno</button>
+              <button class="btn btn-secondary" id="reset-meteorologia">Limpiar</button>
+            </div>
+            <div class="output full">
+              <strong>Resultado meteorológico:</strong>
+              <div id="salida-meteorologia" class="placeholder">[aquí se mostraría la evolución del fenómeno]</div>
+              <div id="log-meteorologia" class="log"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Módulo: Oceanografía -->
+        <div class="module" id="modulo-oceanografia">
+          <div class="module-header">
+            <h2>🌊 Oceanografía</h2>
+          </div>
+          <div class="module-content">
+            <div class="row">
+              <div><label for="oceano">Océano / mar</label><input id="oceano" type="text"
+                  placeholder="Ej. Océano Pacífico" /></div>
+              <div><label for="salinidad">Salinidad (‰)</label><input id="salinidad" type="number" step="0.1"
+                  placeholder="Ej. 35" /></div>
+            </div>
+            <div class="row">
+              <div><label for="profundidad-media">Profundidad media (m)</label><input id="profundidad-media"
+                  type="number" step="1" placeholder="Ej. 4000" /></div>
+              <div><label for="temperatura-superficie">Temp. superficie (°C)</label><input id="temperatura-superficie"
+                  type="number" step="0.1" placeholder="Ej. 22" /></div>
+            </div>
+            <div class="row">
+              <div class="full"><label for="descripcion-ocean">Descripción</label><textarea id="descripcion-ocean"
+                  placeholder="Corrientes, mareas..."></textarea></div>
+            </div>
+            <div class="actions">
+              <button class="btn btn-primary" id="simular-oceanografia">Simular dinámica marina</button>
+              <button class="btn btn-secondary" id="reset-oceanografia">Limpiar</button>
+            </div>
+            <div class="output full">
+              <strong>Resultado oceanográfico:</strong>
+              <div id="salida-oceanografia" class="placeholder">[aquí se mostraría la dinámica marina]</div>
+              <div id="log-oceanografia" class="log"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Módulo: Matemáticas aplicadas -->
+        <div class="module" id="modulo-matematicas">
+          <div class="module-header">
+            <h2>📐 Matemáticas aplicadas</h2>
+          </div>
+          <div class="module-content">
+            <div class="row">
+              <div><label for="modelo-math">Modelo</label><select id="modelo-math">
+                  <option value="crecimiento-logistico">Crecimiento logístico</option>
+                  <option value="decaimiento-exponencial">Decaimiento exponencial</option>
+                  <option value="oscilador-armonico">Oscilador armónico</option>
+                </select></div>
+              <div><label for="param1">Parámetro 1</label><input id="param1" type="number" step="0.001"
+                  placeholder="Ej. r o lambda" /></div>
+            </div>
+            <div class="row">
+              <div><label for="param2">Parámetro 2</label><input id="param2" type="number" step="0.001"
+                  placeholder="Ej. K o x0" /></div>
+              <div><label for="tiempo-math">Tiempo (s)</label><input id="tiempo-math" type="number" step="0.01"
+                  placeholder="Ej. 10" /></div>
+            </div>
+            <div class="actions">
+              <button class="btn btn-primary" id="simular-matematicas">Simular modelo</button>
+              <button class="btn btn-secondary" id="reset-matematicas">Limpiar</button>
+            </div>
+            <div class="output full">
+              <strong>Resultado matemático:</strong>
+              <div id="salida-matematicas" class="placeholder">[aquí se mostraría la evolución del modelo]</div>
+              <div id="log-matematicas" class="log"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Módulo: Elementos químicos (tabla periódica) -->
+        <div class="module" id="modulo-elementos">
+          <div class="module-header">
+            <h2>⚗️ Elementos químicos</h2>
+          </div>
+          <div class="module-content">
+            <div class="row">
+              <div><label for="busqueda-elemento">Buscar por símbolo o número atómico</label><input
+                  id="busqueda-elemento" type="text" placeholder="Ej. H o 1" /></div>
+              <div><label for="grupo-elemento">Grupo</label><select id="grupo-elemento">
+                  <option value="">Todos</option>
+                  <option value="alcalinos">Alcalinos</option>
+                  <option value="alcalinoterreos">Alcalinotérreos</option>
+                  <option value="transicion">Metales de transición</option>
+                  <option value="lantanidos">Lantánidos</option>
+                  <option value="actinidos">Actínidos</option>
+                  <option value="no-metales">No metales</option>
+                  <option value="halogenos">Halógenos</option>
+                  <option value="gases-nobles">Gases nobles</option>
+                </select></div>
+            </div>
+            <div class="actions">
+              <button class="btn btn-primary" id="buscar-elemento">Buscar</button>
+              <button class="btn btn-secondary" id="reset-elementos">Limpiar</button>
+            </div>
+            <div class="output full">
+              <strong>Ficha del elemento:</strong>
+              <div id="salida-elementos" class="placeholder">[aquí se mostraría la ficha del elemento]</div>
+              <div id="log-elementos" class="log"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- JavaScript completo con robusto adaptador de rutas -->
+  <script>
+    (function () {
+      // ---------- ADAPTADOR DE RUTAS MEJORADO ----------
+      function fixPaths() {
+        const currentPath = window.location.pathname; // ej: /View/Agentes/Santa_olalla.html
+        const pathParts = currentPath.split('/').filter(p => p !== ''); // ej: ['View', 'Agentes', 'Santa_olalla.html']
+
+        // Buscar la posición del directorio que contiene "Agentes" o asumir estructura
+        let basePrefix = '';
+        const fileName = pathParts[pathParts.length - 1] || '';
+        const isInAgentes = pathParts.includes('Agentes');
+
+        if (isInAgentes) {
+          // Estamos dentro de Agentes/, los recursos están un nivel arriba (../)
+          basePrefix = '../';
+        } else {
+          // No estamos en Agentes, calcular profundidad desde la raíz
+          const depth = pathParts.length - 1; // menos el archivo
+          basePrefix = depth > 0 ? '../'.repeat(depth) : './';
+        }
+
+        // Ajuste adicional: si el archivo está en la raíz, basePrefix debe ser './'
+        if (pathParts.length === 1) {
+          basePrefix = './';
+        }
+
+        // Log para depuración (abrir consola F12 para ver el prefijo calculado)
+        console.log('[Santa Olalla] Ruta base detectada:', basePrefix);
+        console.log('[Santa Olalla] Path actual:', currentPath);
+
+        function getPath(relative) {
+          return basePrefix + relative;
+        }
+
+        // Favicon
+        const favicon = document.getElementById('dynamic-favicon');
+        if (favicon) favicon.href = getPath('assets/img/logo.png');
+
+        // Logo link
+        const logoLink = document.getElementById('logo-link');
+        if (logoLink) logoLink.href = getPath('index.html');
+
+        // Generar enlaces de navegación
+        const navContainer = document.getElementById('nav-links-container');
+        if (navContainer) {
+          const agents = [
+            { name: 'Okuota', file: 'Agentes/okuota.html' },
+            { name: 'Monet', file: 'Agentes/Monet.html' },
+            { name: 'Ditters', file: 'Agentes/Ditters.html' },
+            { name: 'Jean', file: 'Agentes/Jean.html' },
+            { name: 'Lovelace', file: 'Agentes/Lovelace.html' },
+            { name: 'Santa Olalla', file: 'Agentes/Santa_olalla.html', active: true },
+            { name: 'Perfil', file: 'Perfil.html' },
+            { name: 'Historial', file: 'Historial.html' }
+          ];
+
+          navContainer.innerHTML = '';
+          agents.forEach(agent => {
+            const a = document.createElement('a');
+            a.href = getPath(agent.file);
+            a.textContent = agent.name;
+            a.title = agent.name;
+            a.setAttribute('aria-label', agent.name);
+            if (agent.active) {
+              a.classList.add('active');
+              a.setAttribute('aria-current', 'page');
+            }
+            navContainer.appendChild(a);
+          });
+        }
+      }
+
+      // Ejecutar corrección de rutas inmediatamente
+      fixPaths();
+
+      // ---------- TEMA ----------
+      const themeBtn = document.getElementById('theme');
+      function initTheme() {
+        const saved = localStorage.getItem('korbux-theme');
+        const prefers = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (saved === 'dark' || (!saved && prefers)) {
+          document.body.classList.add('dark');
+          themeBtn.setAttribute('aria-pressed', 'true');
+        } else {
+          themeBtn.setAttribute('aria-pressed', 'false');
+        }
+      }
+      initTheme();
+      themeBtn.addEventListener('click', () => {
+        const isDark = document.body.classList.toggle('dark');
+        themeBtn.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+        localStorage.setItem('korbux-theme', isDark ? 'dark' : 'light');
+      });
+
+      // ---------- BASE DE DATOS LOKIJS ----------
+      const db = new loki("korbux.json", {
+        autoload: true,
+        autosave: true,
+        autosaveInterval: 5000,
+        autoloadCallback: () => {
+          if (!db.getCollection("simulaciones")) db.addCollection("simulaciones");
+          if (!db.getCollection("biologico")) db.addCollection("biologico", { indices: ["nombre"] });
+          if (!db.getCollection("minerales")) db.addCollection("minerales", { indices: ["nombre"] });
+          if (!db.getCollection("geologia")) db.addCollection("geologia", { indices: ["nombre"] });
+          if (!db.getCollection("elementos")) db.addCollection("elementos", { indices: ["simbolo", "numero"] });
+          if (!db.getCollection("auditoria")) db.addCollection("auditoria");
+          precargarElementos();
+        },
+      });
+
+      function auditar(entry) {
+        const auditoria = db.getCollection("auditoria");
+        if (auditoria) auditoria.insert({ ...entry, fecha: new Date().toISOString(), modulo: "Santa Olalla", usuario: "daniel_korbux" });
+      }
+      function setOutput(el, html) { el.innerHTML = html; }
+      function numberOr(val, fallback) { const n = parseFloat(val); return Number.isFinite(n) ? n : fallback; }
+
+      // ---------- FÍSICA ----------
+      document.getElementById("simular-colision").addEventListener("click", () => {
+        const energia = numberOr(document.getElementById("energia-colision").value, 0);
+        const tipo = document.getElementById("particulas").value;
+        const intensidad = numberOr(document.getElementById("intensidad-fe").value, 0);
+        const duracion = numberOr(document.getElementById("duracion-fe").value, 0);
+        const salida = document.getElementById("salida-fisica");
+        const log = document.getElementById("log-fisica");
+        const payload = { categoria: "fisica", tipo, energia_GeV: energia, intensidad_1e11: intensidad, duracion_s: duracion, fecha_registro: new Date().toISOString() };
+        db.getCollection("simulaciones").insert(payload);
+        auditar({ tipo: "simulacion", campo: "fisica_colision", nuevo: JSON.stringify(payload).slice(0, 200) });
+        setOutput(salida, `<div><p><strong>Partículas:</strong> ${tipo}</p><p><strong>Energía:</strong> ${energia} GeV</p><p><strong>Intensidad:</strong> ${intensidad} × 10¹¹</p><p><strong>Duración:</strong> ${duracion} s</p><p>Simulación conceptual: trazas y deposición de energía.</p></div>`);
+        log.textContent = "Simulación física registrada.";
+      });
+      document.getElementById("reset-fisica").addEventListener("click", () => {
+        ["energia-colision", "intensidad-fe", "duracion-fe"].forEach(id => document.getElementById(id).value = "");
+        document.getElementById("particulas").selectedIndex = 0;
+        setOutput(document.getElementById("salida-fisica"), "[aquí se visualizaría la colisión de partículas]");
+        document.getElementById("log-fisica").textContent = "";
+      });
+
+      // ---------- QUÍMICA ----------
+      document.getElementById("simular-quimica").addEventListener("click", () => {
+        const A = document.getElementById("reactivo-a").value.trim();
+        const B = document.getElementById("reactivo-b").value.trim();
+        if (!A || !B) { setOutput(document.getElementById("salida-quimica"), "Error: ambos reactivos son obligatorios."); return; }
+        const T = numberOr(document.getElementById("temperatura").value, 25);
+        const P = numberOr(document.getElementById("presion").value, 1);
+        const protocolo = document.getElementById("protocolo").value.trim();
+        const payload = { categoria: "quimica", reactivoA: A, reactivoB: B, temperatura_C: T, presion_atm: P, protocolo };
+        db.getCollection("simulaciones").insert(payload);
+        auditar({ tipo: "simulacion", campo: "quimica_reaccion" });
+        setOutput(document.getElementById("salida-quimica"), `<div><p><strong>Reactivos:</strong> ${A} + ${B}</p><p><strong>Condiciones:</strong> ${T} °C, ${P} atm</p><p>Simulación conceptual: ruta de reacción.</p></div>`);
+        document.getElementById("log-quimica").textContent = "Simulación química registrada.";
+      });
+      document.getElementById("reset-quimica").addEventListener("click", () => {
+        ["reactivo-a", "reactivo-b", "temperatura", "presion", "protocolo"].forEach(id => document.getElementById(id).value = "");
+        setOutput(document.getElementById("salida-quimica"), "[aquí se visualizaría la evolución de la reacción]");
+        document.getElementById("log-quimica").textContent = "";
+      });
+
+      // ---------- BIOLOGÍA (ADN) ----------
+      function validarADN(seq) { return /^[ATCG]+$/i.test(seq.replace(/\s+/g, "")); }
+      document.getElementById("guardar-adn").addEventListener("click", () => {
+        const nombre = document.getElementById("nombre-muestra").value.trim();
+        const cadena = document.getElementById("cadena-adn").value.trim();
+        if (!nombre || !cadena || !validarADN(cadena)) { setOutput(document.getElementById("salida-biologia"), "Error: cadena inválida o campos vacíos."); return; }
+        const limpio = cadena.replace(/\s+/g, "").toUpperCase();
+        const gc = (limpio.match(/[GC]/g) || []).length;
+        const payload = { nombre, organismo: document.getElementById("organismo").value.trim(), cadena: limpio, longitud: limpio.length, contenidoGC_pct: Number(((gc / limpio.length) * 100).toFixed(2)), notas: document.getElementById("notas-biologicas").value.trim() };
+        db.getCollection("biologico").insert(payload);
+        auditar({ tipo: "registro", campo: "biologia_adn" });
+        setOutput(document.getElementById("salida-biologia"), `<div><p><strong>Muestra:</strong> ${nombre}</p><p><strong>Longitud:</strong> ${payload.longitud} bases</p><p><strong>GC:</strong> ${payload.contenidoGC_pct}%</p></div>`);
+        document.getElementById("log-biologia").textContent = "Registro biológico guardado.";
+      });
+      document.getElementById("reset-biologia").addEventListener("click", () => {
+        ["nombre-muestra", "cadena-adn", "organismo", "notas-biologicas"].forEach(id => document.getElementById(id).value = "");
+        setOutput(document.getElementById("salida-biologia"), "[aquí se mostraría el resumen del registro]");
+        document.getElementById("log-biologia").textContent = "";
+      });
+
+      // ---------- ASTROFÍSICA ----------
+      document.getElementById("simular-astro").addEventListener("click", () => {
+        const sistema = document.getElementById("sistema").value;
+        const escala = document.getElementById("escala").value;
+        const dt = numberOr(document.getElementById("paso-tiempo").value, 0.1);
+        const dur = numberOr(document.getElementById("duracion-sim").value, 100);
+        const payload = { categoria: "astrofisica", sistema, escala, paso_s: dt, duracion_s: dur };
+        db.getCollection("simulaciones").insert(payload);
+        auditar({ tipo: "simulacion", campo: "astro_dinamica" });
+        setOutput(document.getElementById("salida-astro"), `<div><p><strong>Sistema:</strong> ${sistema}</p><p><strong>Escala:</strong> ${escala}</p><p>Simulación conceptual de dinámica orbital.</p></div>`);
+        document.getElementById("log-astro").textContent = "Simulación astrofísica registrada.";
+      });
+      document.getElementById("reset-astro").addEventListener("click", () => {
+        ["paso-tiempo", "duracion-sim"].forEach(id => document.getElementById(id).value = "");
+        document.getElementById("sistema").selectedIndex = 2;
+        document.getElementById("escala").selectedIndex = 0;
+        setOutput(document.getElementById("salida-astro"), "[aquí se visualizaría la dinámica orbital/relativista]");
+        document.getElementById("log-astro").textContent = "";
+      });
+
+      // ---------- MINERALES ----------
+      document.getElementById("guardar-mineral").addEventListener("click", () => {
+        const nombre = document.getElementById("nombre-mineral").value.trim();
+        const formula = document.getElementById("formula-mineral").value.trim();
+        if (!nombre || !formula) { setOutput(document.getElementById("salida-mineral"), "Error: nombre y fórmula obligatorios."); return; }
+        const payload = { nombre, formula, descripcion: document.getElementById("descripcion-mineral").value.trim() };
+        db.getCollection("minerales").insert(payload);
+        auditar({ tipo: "registro", campo: "mineral" });
+        setOutput(document.getElementById("salida-mineral"), `<div><p><strong>Mineral:</strong> ${nombre}</p><p><strong>Fórmula:</strong> ${formula}</p></div>`);
+        document.getElementById("log-mineral").textContent = "Registro mineralógico guardado.";
+      });
+      document.getElementById("reset-mineral").addEventListener("click", () => {
+        ["nombre-mineral", "formula-mineral", "descripcion-mineral"].forEach(id => document.getElementById(id).value = "");
+        setOutput(document.getElementById("salida-mineral"), "[aquí se mostraría la información del mineral]");
+        document.getElementById("log-mineral").textContent = "";
+      });
+
+      // ---------- GEOLOGÍA ----------
+      document.getElementById("guardar-roca").addEventListener("click", () => {
+        const nombre = document.getElementById("nombre-roca").value.trim();
+        const tipo = document.getElementById("tipo-roca").value;
+        if (!nombre) { setOutput(document.getElementById("salida-roca"), "Error: nombre obligatorio."); return; }
+        const payload = { nombre, tipo, composicion: document.getElementById("composicion-roca").value.trim(), dureza: numberOr(document.getElementById("dureza-roca").value, null), descripcion: document.getElementById("descripcion-roca").value.trim() };
+        db.getCollection("geologia").insert(payload);
+        auditar({ tipo: "registro", campo: "roca" });
+        setOutput(document.getElementById("salida-roca"), `<div><p><strong>Roca:</strong> ${nombre} (${tipo})</p></div>`);
+        document.getElementById("log-roca").textContent = "Registro geológico guardado.";
+      });
+      document.getElementById("reset-roca").addEventListener("click", () => {
+        ["nombre-roca", "composicion-roca", "dureza-roca", "descripcion-roca"].forEach(id => document.getElementById(id).value = "");
+        document.getElementById("tipo-roca").selectedIndex = 0;
+        setOutput(document.getElementById("salida-roca"), "[aquí se mostraría la información de la roca]");
+        document.getElementById("log-roca").textContent = "";
+      });
+
+      // ---------- METEOROLOGÍA ----------
+      document.getElementById("simular-meteorologia").addEventListener("click", () => {
+        const fenomeno = document.getElementById("fenomeno").value;
+        const payload = { categoria: "meteorologia", fenomeno };
+        db.getCollection("simulaciones").insert(payload);
+        setOutput(document.getElementById("salida-meteorologia"), `<div><p><strong>Fenómeno:</strong> ${fenomeno}</p><p>Simulación conceptual.</p></div>`);
+        document.getElementById("log-meteorologia").textContent = "Simulación meteorológica registrada.";
+      });
+      document.getElementById("reset-meteorologia").addEventListener("click", () => {
+        ["temperatura-met", "presion-met", "humedad-met", "viento-met"].forEach(id => document.getElementById(id).value = "");
+        setOutput(document.getElementById("salida-meteorologia"), "[aquí se mostraría la evolución del fenómeno]");
+        document.getElementById("log-meteorologia").textContent = "";
+      });
+
+      // ---------- OCEANOGRAFÍA ----------
+      document.getElementById("simular-oceanografia").addEventListener("click", () => {
+        const nombre = document.getElementById("oceano").value.trim();
+        if (!nombre) { setOutput(document.getElementById("salida-oceanografia"), "Error: nombre obligatorio."); return; }
+        db.getCollection("simulaciones").insert({ categoria: "oceanografia", nombre });
+        setOutput(document.getElementById("salida-oceanografia"), `<div><p><strong>Océano:</strong> ${nombre}</p><p>Simulación conceptual.</p></div>`);
+        document.getElementById("log-oceanografia").textContent = "Simulación oceanográfica registrada.";
+      });
+      document.getElementById("reset-oceanografia").addEventListener("click", () => {
+        ["oceano", "salinidad", "profundidad-media", "temperatura-superficie", "descripcion-ocean"].forEach(id => document.getElementById(id).value = "");
+        setOutput(document.getElementById("salida-oceanografia"), "[aquí se mostraría la dinámica marina]");
+        document.getElementById("log-oceanografia").textContent = "";
+      });
+
+      // ---------- MATEMÁTICAS ----------
+      document.getElementById("simular-matematicas").addEventListener("click", () => {
+        const modelo = document.getElementById("modelo-math").value;
+        db.getCollection("simulaciones").insert({ categoria: "matematicas", modelo });
+        setOutput(document.getElementById("salida-matematicas"), `<div><p><strong>Modelo:</strong> ${modelo}</p><p>Simulación conceptual.</p></div>`);
+        document.getElementById("log-matematicas").textContent = "Simulación matemática registrada.";
+      });
+      document.getElementById("reset-matematicas").addEventListener("click", () => {
+        ["param1", "param2", "tiempo-math"].forEach(id => document.getElementById(id).value = "");
+        setOutput(document.getElementById("salida-matematicas"), "[aquí se mostraría la evolución del modelo]");
+        document.getElementById("log-matematicas").textContent = "";
+      });
+
+      // ---------- ELEMENTOS (precarga y búsqueda) ----------
+      function precargarElementos() {
+        const elementos = db.getCollection("elementos");
+        if (elementos.count() > 0) return;
+        const base = [
+          { simbolo: "H", numero: 1, nombre: "Hidrógeno", masa: 1.008, grupo: "no-metales", desc: "Gas diatómico, muy ligero." },
+          { simbolo: "He", numero: 2, nombre: "Helio", masa: 4.0026, grupo: "gases-nobles", desc: "Gas noble, inerte." },
+          { simbolo: "C", numero: 6, nombre: "Carbono", masa: 12.011, grupo: "no-metales", desc: "Base de la química orgánica." },
+          { simbolo: "O", numero: 8, nombre: "Oxígeno", masa: 15.999, grupo: "no-metales", desc: "Gas esencial para la respiración." }
+        ];
+        base.forEach(e => elementos.insert(e));
+      }
+
+      document.getElementById("buscar-elemento").addEventListener("click", () => {
+        const q = document.getElementById("busqueda-elemento").value.trim();
+        const grupo = document.getElementById("grupo-elemento").value;
+        const elementos = db.getCollection("elementos");
+        let res = null;
+        if (q) {
+          const num = parseInt(q, 10);
+          res = Number.isFinite(num) ? elementos.findOne({ numero: num }) : elementos.findOne({ simbolo: q });
+        }
+        if (!res && grupo) {
+          const list = elementos.find({ grupo });
+          if (list.length) {
+            setOutput(document.getElementById("salida-elementos"), `<div><p><strong>Grupo:</strong> ${grupo}</p><ul>${list.map(e => `<li>${e.simbolo} (${e.numero}) · ${e.nombre}</li>`).join("")}</ul></div>`);
+            return;
+          }
+        }
+        if (res) setOutput(document.getElementById("salida-elementos"), `<div><p><strong>${res.nombre}</strong> (${res.simbolo}) · Nº ${res.numero}</p><p>${res.desc}</p></div>`);
+        else setOutput(document.getElementById("salida-elementos"), "Sin resultados.");
+      });
+      document.getElementById("reset-elementos").addEventListener("click", () => {
+        document.getElementById("busqueda-elemento").value = "";
+        document.getElementById("grupo-elemento").selectedIndex = 0;
+        setOutput(document.getElementById("salida-elementos"), "[aquí se mostraría la ficha del elemento]");
+      });
+
+    })();
+  </script>
+</body>
+
+</html>

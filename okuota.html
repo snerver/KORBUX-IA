@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Okuota · Motor Semántico</title>
+
+  <!-- Favicon (corregida ruta relativa desde /Agentes/) -->
+  <link rel="icon" href="../assets/img/logo.png" type="image/png" />
+
+  <!-- LokiJS (base de datos local) -->
+  <script src="https://cdn.jsdelivr.net/npm/lokijs@1.5.12/build/lokijs.min.js"></script>
+
+  <!-- Estilos integrados — mismo diseño que index.html, adaptado para Okuota -->
+  <style>
+    /* ===== RESET & VARIABLES (idéntico al index) ===== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    }
+
+    :root {
+      --bg-body: #f9fafb;
+      --bg-nav: #ffffff;
+      --bg-sidebar: #f3f4f6;
+      --bg-chat: #ffffff;
+      --border-light: #e5e7eb;
+      --text-primary: #111827;
+      --text-secondary: #4b5563;
+      --text-muted: #6b7280;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --bubble-user: #e0f2fe;
+      --bubble-ai: #ffffff;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      --radius-md: 0.75rem;
+      --radius-lg: 1rem;
+    }
+
+    body.dark {
+      --bg-body: #1e1e2f;
+      --bg-nav: #2a2a3c;
+      --bg-sidebar: #252537;
+      --bg-chat: #1a1a2a;
+      --border-light: #3a3a50;
+      --text-primary: #f1f5f9;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+      --bubble-user: #2d3a5e;
+      --bubble-ai: #2a2a3c;
+    }
+
+    body {
+      background-color: var(--bg-body);
+      color: var(--text-primary);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      line-height: 1.5;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    /* ===== NAVEGACIÓN LATERAL IZQUIERDA (agentes / perfil) ===== */
+    .nav {
+      width: 88px;
+      background-color: var(--bg-nav);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.2rem 0.5rem;
+      border-right: 1px solid var(--border-light);
+      box-shadow: var(--shadow-sm);
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+
+    .logo {
+      font-weight: 700;
+      font-size: 1.4rem;
+      letter-spacing: -0.5px;
+      color: var(--accent);
+      text-decoration: none;
+      margin-bottom: 2rem;
+      padding: 0.25rem;
+      transition: opacity 0.2s;
+    }
+
+    .logo:hover {
+      opacity: 0.8;
+    }
+
+    .nav-icons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      width: 100%;
+      align-items: center;
+      flex: 1;
+    }
+
+    .nav-icons a {
+      display: block;
+      width: 100%;
+      text-align: center;
+      padding: 0.6rem 0.2rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-decoration: none;
+      border-radius: 12px;
+      background-color: transparent;
+      transition: background-color 0.15s, color 0.15s;
+      word-break: break-word;
+    }
+
+    .nav-icons a:hover {
+      background-color: var(--border-light);
+      color: var(--text-primary);
+    }
+
+    .nav-icons a.active {
+      background-color: var(--accent);
+      color: white;
+    }
+
+    .nav-bottom {
+      margin-top: auto;
+      padding-top: 1rem;
+      width: 100%;
+    }
+
+    #theme {
+      width: 100%;
+      background: transparent;
+      border: 1px solid var(--border-light);
+      color: var(--text-primary);
+      padding: 0.5rem 0.2rem;
+      border-radius: 30px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    #theme:hover {
+      background-color: var(--border-light);
+    }
+
+    #theme span {
+      pointer-events: none;
+    }
+
+    /* ===== CONTENEDOR PRINCIPAL (sidebar + chat) ===== */
+    .main {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    /* ===== SIDEBAR DE CHATS RECIENTES (se mantiene por consistencia visual) ===== */
+    .sidebar {
+      width: 280px;
+      background-color: var(--bg-sidebar);
+      border-right: 1px solid var(--border-light);
+      display: flex;
+      flex-direction: column;
+      padding: 1.25rem 1rem;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    #new-chat {
+      background-color: var(--accent);
+      color: white;
+      font-weight: 600;
+      border: none;
+      padding: 0.75rem 1rem;
+      border-radius: 30px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      transition: background 0.2s;
+      box-shadow: var(--shadow-sm);
+    }
+
+    #new-chat:hover {
+      background-color: var(--accent-hover);
+    }
+
+    .recent-title {
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      padding-left: 0.25rem;
+    }
+
+    #chats {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    #chats li {
+      padding: 0.6rem 0.75rem;
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: background 0.15s;
+    }
+
+    #chats li:hover {
+      background-color: var(--border-light);
+    }
+
+    /* ===== ÁREA DE CHAT (Aquí va el contenido de Okuota) ===== */
+    .chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--bg-chat);
+      min-width: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    /* Contenedor específico para Okuota, similar a la sección de chat */
+    .okuota-container {
+      padding: 2rem 2.5rem;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+      flex: 1;
+    }
+
+    .okuota-header {
+      margin-bottom: 2rem;
+    }
+
+    .okuota-header h2 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-primary);
+    }
+
+    #okuota-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    #semantic-input {
+      min-height: 160px;
+      border-radius: 1.5rem;
+      padding: 1.2rem 1.5rem;
+      font-size: 1rem;
+      border: 1px solid var(--border-light);
+      background: var(--bg-body);
+      color: var(--text-primary);
+      font-family: inherit;
+      resize: vertical;
+      box-shadow: var(--shadow-sm);
+      transition: border 0.15s, box-shadow 0.15s;
+    }
+
+    #semantic-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+    }
+
+    #analyze-btn {
+      align-self: flex-start;
+      padding: 0.9rem 2.2rem;
+      border-radius: 40px;
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      box-shadow: var(--shadow-sm);
+    }
+
+    #analyze-btn:hover:not(:disabled) {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    #analyze-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    #semantic-output {
+      background: var(--bg-sidebar);
+      padding: 1.8rem;
+      border-radius: 1.5rem;
+      border: 1px solid var(--border-light);
+      box-shadow: var(--shadow-sm);
+    }
+
+    #semantic-output strong {
+      display: block;
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      color: var(--accent);
+    }
+
+    #interpretacion {
+      font-size: 1.1rem;
+      font-weight: 500;
+      margin-bottom: 1.2rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px dashed var(--border-light);
+      color: var(--text-primary);
+    }
+
+    .log {
+      font-size: 0.95rem;
+      line-height: 1.6;
+      background: var(--bg-chat);
+      padding: 1.2rem 1.4rem;
+      border-radius: 1rem;
+      border-left: 5px solid var(--accent);
+      color: var(--text-secondary);
+    }
+
+    .log strong {
+      color: var(--accent);
+      display: inline;
+      margin-bottom: 0;
+    }
+
+    .db-status {
+      font-size: 0.8rem;
+      margin-top: 1rem;
+      color: var(--accent);
+      text-align: right;
+      font-weight: 500;
+    }
+
+    /* Placeholder */
+    #semantic-input::placeholder {
+      color: var(--text-muted);
+      opacity: 0.7;
+    }
+
+    /* Responsive: mantiene la adaptación del index */
+    @media (max-width: 768px) {
+      body {
+        flex-direction: column;
+      }
+
+      .nav {
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+        padding: 0.5rem 1rem;
+        border-right: none;
+        border-bottom: 1px solid var(--border-light);
+        overflow-x: auto;
+        justify-content: space-between;
+      }
+
+      .logo {
+        margin-bottom: 0;
+        margin-right: 0.5rem;
+        font-size: 1.3rem;
+      }
+
+      .nav-icons {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        flex: 1;
+        justify-content: flex-start;
+      }
+
+      .nav-icons a {
+        width: auto;
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+      }
+
+      .nav-bottom {
+        margin-top: 0;
+        padding-top: 0;
+        width: auto;
+      }
+
+      #theme {
+        width: auto;
+        padding: 0.4rem 1rem;
+      }
+
+      .main {
+        flex-direction: column;
+        height: calc(100vh - 70px);
+      }
+
+      .sidebar {
+        width: 100%;
+        max-height: 140px;
+        border-right: none;
+        border-bottom: 1px solid var(--border-light);
+        padding: 0.75rem;
+      }
+
+      .chat-area {
+        height: auto;
+        flex: 1;
+      }
+
+      .okuota-container {
+        padding: 1.5rem 1rem;
+      }
+
+      #semantic-input {
+        min-height: 120px;
+      }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background-color: var(--border-light);
+      border-radius: 20px;
+    }
+
+    *:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    button,
+    a {
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Barra lateral fija (exactamente igual que en index.html) -->
+  <nav class="nav" aria-label="Navegación principal" role="navigation">
+    <a class="logo" href="../index.html" aria-label="Korbux inicio">Korbux</a>
+
+    <!-- Accesos a agentes (estáticos, con active en Okuota) -->
+    <div class="nav-icons" aria-label="Agentes disponibles">
+      <a href="/View/Agentes/okuota.html" class="active" aria-current="page" title="Okuota">Okuota</a>
+      <a href="/View/Agentes/monet.html" title="Monet">Monet</a>
+      <a href="/View/Agentes/ditters.html" title="Ditters">Ditters</a>
+      <a href="/View/Agentes/jean.html" title="Jean">Jean</a>
+      <a href="/View/Agentes/lovelace.html" title="Lovelace">Lovelace</a>
+      <a href="/View/Agentes/SantaOlalla.html" title="Santa Olalla">Santa Olalla</a>
+      <a href="../Perfil.html" title="Perfil">Perfil</a>
+      <a href="../Historial.html" title="Historial">Historial</a>
+    </div>
+
+    <!-- Botón de tema -->
+    <div class="nav-bottom">
+      <button id="theme" type="button" aria-pressed="false" aria-label="Cambiar tema">
+        <span>Tema</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Área principal (sidebar + chat) -->
+  <main class="main" id="main-content">
+
+    <!-- Sidebar de chats recientes (mantenemos la estructura por fidelidad visual) -->
+    <aside class="sidebar" aria-label="Chats recientes">
+      <button id="new-chat" type="button" aria-label="Crear nuevo chat">
+        <span>+</span> Nuevo Chat
+      </button>
+
+      <h2 class="recent-title" id="recent-chats-title">Chats recientes</h2>
+      <!-- Lista vacía por defecto, se puede poblar si se desea -->
+      <ul id="chats" aria-live="polite" aria-labelledby="recent-chats-title"></ul>
+    </aside>
+
+    <!-- Área de conversación / contenido de Okuota -->
+    <section class="chat-area" aria-label="Área de análisis semántico Okuota">
+      <div class="okuota-container">
+        <div class="okuota-header">
+          <h2>🧠 Okuota · Interpretación semántica</h2>
+          <p style="color: var(--text-secondary); margin-top: 0.5rem;">Explora conceptos, construye memoria local.</p>
+        </div>
+
+        <form id="okuota-form" autocomplete="off" novalidate>
+          <textarea id="semantic-input"
+            placeholder="Escribe una idea, concepto o pregunta compleja... (ej: 'explorar la psicología del color en interfaces modernas')"
+            required></textarea>
+          <button id="analyze-btn" type="submit" disabled>Inicializando base...</button>
+        </form>
+
+        <div id="semantic-output">
+          <strong>📋 Análisis semántico</strong>
+          <div id="interpretacion">Esperando tu entrada...</div>
+          <div class="log" id="registro-log">
+            <em>Base de conocimiento local cargándose...</em>
+          </div>
+          <div class="db-status" id="db-status-indicator">Conectando con memoria semántica...</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Toda la lógica JavaScript (LokiJS, navegación dinámica ya no es necesaria porque es estática, pero mantenemos funciones de tema y análisis) -->
+  <script>
+    (function () {
+      // ---------- CONFIGURACIÓN DE TEMA (coherente con index) ----------
+      const themeBtn = document.getElementById('theme');
+      function initTheme() {
+        const savedTheme = localStorage.getItem("korbux-theme");
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+          document.body.classList.add('dark');
+          themeBtn.setAttribute('aria-pressed', 'true');
+        } else {
+          themeBtn.setAttribute('aria-pressed', 'false');
+        }
+      }
+      initTheme();
+
+      themeBtn.addEventListener('click', () => {
+        const isDark = document.body.classList.toggle('dark');
+        themeBtn.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+        localStorage.setItem('korbux-theme', isDark ? 'dark' : 'light');
+      });
+
+      // ---------- OKUOTA: LÓGICA SEMÁNTICA CON LOKIJS (sin cambios funcionales) ----------
+      const textarea = document.getElementById("semantic-input");
+      const analyzeBtn = document.getElementById("analyze-btn");
+      const interpretacionDiv = document.getElementById("interpretacion");
+      const registroLog = document.getElementById("registro-log");
+      const dbStatusSpan = document.getElementById("db-status-indicator");
+
+      let dbReady = false;
+      let conocimientoCollection = null;
+      let auditoriaCollection = null;
+      let dbInstance = null;
+
+      const STOP_WORDS = new Set([
+        "quiero", "que", "me", "una", "el", "la", "por", "favor", "para", "con", "sin",
+        "sobre", "ante", "bajo", "cabe", "contra", "desde", "durante", "entre", "hacia",
+        "hasta", "mediante", "para", "según", "tras", "y", "o", "pero", "mas", "a", "ante"
+      ]);
+
+      function extraerConceptos(texto) {
+        if (!texto) return [];
+        return texto
+          .toLowerCase()
+          .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+          .split(/\W+/)
+          .filter(palabra => palabra && palabra.length >= 4 && !STOP_WORDS.has(palabra));
+      }
+
+      function setDbReadyUI(ready) {
+        dbReady = ready;
+        if (ready) {
+          analyzeBtn.disabled = false;
+          analyzeBtn.textContent = "Analizar semánticamente";
+          dbStatusSpan.innerHTML = "Base semántica activa | Aprendizaje continuo";
+          registroLog.innerHTML = "<strong>Base de conocimiento lista</strong><br>Los conceptos nuevos se almacenarán automáticamente.";
+        } else {
+          analyzeBtn.disabled = true;
+          analyzeBtn.textContent = "Cargando motor semántico...";
+          dbStatusSpan.innerHTML = "Inicializando memoria local...";
+        }
+      }
+
+      function registrarAprendizaje(palabra, usuario) {
+        if (!conocimientoCollection || !auditoriaCollection) return false;
+        try {
+          const existe = conocimientoCollection.findOne({ palabra: palabra });
+          if (existe) return false;
+
+          conocimientoCollection.insert({
+            palabra: palabra,
+            significado: "Pendiente de definición",
+            contexto: "Extraído desde Okuota",
+            usuario: usuario,
+            fecha_registro: new Date().toISOString(),
+            veces_consultada: 1
+          });
+
+          auditoriaCollection.insert({
+            tipo: "aprendizaje_semantico",
+            campo: "palabra_clave",
+            nuevo: palabra,
+            usuario: usuario,
+            fecha: new Date().toISOString(),
+            modulo: "Okuota",
+            origen_texto: textarea.value.substring(0, 120)
+          });
+          return true;
+        } catch (err) {
+          console.warn("Error al insertar en colección:", err);
+          return false;
+        }
+      }
+
+      function procesarAnalisis(texto) {
+        if (!dbReady) {
+          interpretacionDiv.innerHTML = "Base de conocimiento aún no lista. Espera un instante.";
+          return;
+        }
+        if (!texto.trim()) {
+          interpretacionDiv.innerHTML = "Escribe algo para analizar semánticamente.";
+          return;
+        }
+
+        const conceptosRaw = extraerConceptos(texto);
+        const conceptosUnicos = [...new Set(conceptosRaw)];
+        registroLog.innerHTML = "";
+
+        let nuevosAprendidos = 0;
+        const usuarioActual = "daniel_korbux";
+
+        if (conceptosUnicos.length === 0) {
+          registroLog.innerHTML = "No se detectaron conceptos nuevos (palabras con más de 4 letras no comunes).";
+        } else {
+          conceptosUnicos.forEach(palabra => {
+            const aprendido = registrarAprendizaje(palabra, usuarioActual);
+            if (aprendido) {
+              nuevosAprendidos++;
+              registroLog.innerHTML += `Nuevo concepto registrado: <strong>${palabra}</strong><br>`;
+            } else {
+              const yaExiste = conocimientoCollection.findOne({ palabra: palabra });
+              if (yaExiste) {
+                registroLog.innerHTML += `Concepto ya conocido: <strong>${palabra}</strong> (enriquecido)<br>`;
+              } else {
+                registroLog.innerHTML += `Concepto omitido: <strong>${palabra}</strong> (error menor)<br>`;
+              }
+            }
+          });
+        }
+
+        let interpretacion = "";
+        if (conceptosUnicos.length > 0) {
+          const palabraPrincipal = conceptosUnicos[0];
+          const registro = conocimientoCollection.findOne({ palabra: palabraPrincipal });
+          const significadoPrev = registro ? registro.significado : "nuevo concepto registrado";
+          interpretacion = `Núcleo semántico: «${palabraPrincipal}» — ${significadoPrev !== "Pendiente de definición" ? `Significado base: ${significadoPrev}` : "Este término será analizado en futuras interacciones."}`;
+
+          if (conceptosUnicos.length > 1) {
+            interpretacion += ` | Contexto expandido: ${conceptosUnicos.slice(0, 3).join(", ")}${conceptosUnicos.length > 3 ? "…" : ""}`;
+          }
+          interpretacionDiv.innerHTML = interpretacion;
+        } else {
+          interpretacionDiv.innerHTML = "No se pudieron extraer conceptos con suficiente peso semántico. Intenta con términos más específicos (ej: 'arquitectura cognitiva', 'heurística visual').";
+        }
+
+        if (nuevosAprendidos > 0) {
+          registroLog.innerHTML += `<br><strong>${nuevosAprendidos}</strong> concepto(s) nuevo(s) almacenado(s) en la memoria semántica.`;
+        }
+
+        if (auditoriaCollection && dbReady) {
+          auditoriaCollection.insert({
+            tipo: "consulta_semantica",
+            consulta: texto.substring(0, 200),
+            conceptos_detectados: conceptosUnicos,
+            usuario: usuarioActual,
+            timestamp: new Date().toISOString(),
+            modulo: "Okuota"
+          });
+        }
+      }
+
+      function inicializarLoki() {
+        try {
+          dbInstance = new loki("korbux_okuota.json", {
+            autoload: true,
+            autosave: true,
+            autosaveInterval: 5000,
+            autoloadCallback: (err) => {
+              if (err) {
+                console.error("Error al cargar base de datos LokiJS:", err);
+                dbStatusSpan.innerHTML = "Error al cargar memoria local. Usando modo lectura limitado.";
+                if (!dbInstance.getCollection("conocimiento")) {
+                  dbInstance.addCollection("conocimiento", { unique: ["palabra"] });
+                }
+                if (!dbInstance.getCollection("auditoria")) {
+                  dbInstance.addCollection("auditoria");
+                }
+                conocimientoCollection = dbInstance.getCollection("conocimiento");
+                auditoriaCollection = dbInstance.getCollection("auditoria");
+                setDbReadyUI(true);
+                return;
+              }
+
+              if (!dbInstance.getCollection("conocimiento")) {
+                dbInstance.addCollection("conocimiento", { unique: ["palabra"] });
+              }
+              if (!dbInstance.getCollection("auditoria")) {
+                dbInstance.addCollection("auditoria");
+              }
+
+              conocimientoCollection = dbInstance.getCollection("conocimiento");
+              auditoriaCollection = dbInstance.getCollection("auditoria");
+
+              if (conocimientoCollection.count() === 0) {
+                const semilla = [
+                  { palabra: "semantica", significado: "Estudio del significado en lenguaje", contexto: "Okuota núcleo" },
+                  { palabra: "cognicion", significado: "Procesos mentales de conocimiento", contexto: "IA" },
+                  { palabra: "heuristicas", significado: "Reglas prácticas para resolución de problemas", contexto: "UX" }
+                ];
+                semilla.forEach(seed => {
+                  conocimientoCollection.insert({
+                    palabra: seed.palabra,
+                    significado: seed.significado,
+                    contexto: seed.contexto,
+                    usuario: "sistema",
+                    fecha_registro: new Date().toISOString()
+                  });
+                });
+                registroLog.innerHTML = "Semilla semántica cargada (heuristicas, cognicion, semantica).";
+              }
+
+              setDbReadyUI(true);
+              dbStatusSpan.innerHTML = "Memoria semántica activa | Aprendizaje automático";
+            }
+          });
+        } catch (error) {
+          console.error("Fallo crítico LokiJS:", error);
+          dbStatusSpan.innerHTML = "Modo offline: análisis sin persistencia";
+          if (!dbInstance) {
+            dbInstance = new loki("korbux_memory.json");
+          }
+          if (!dbInstance.getCollection("conocimiento")) {
+            dbInstance.addCollection("conocimiento", { unique: ["palabra"] });
+          }
+          if (!dbInstance.getCollection("auditoria")) {
+            dbInstance.addCollection("auditoria");
+          }
+          conocimientoCollection = dbInstance.getCollection("conocimiento");
+          auditoriaCollection = dbInstance.getCollection("auditoria");
+          setDbReadyUI(true);
+        }
+      }
+
+      function bindFormSubmit() {
+        const form = document.getElementById("okuota-form");
+        form.addEventListener("submit", (e) => {
+          e.preventDefault();
+          const texto = textarea.value.trim();
+          if (!texto) {
+            interpretacionDiv.innerHTML = "Ingresa un texto para analizar.";
+            return;
+          }
+          procesarAnalisis(texto);
+        });
+      }
+
+      // Mejora menor: textarea autoajustable
+      textarea.addEventListener("input", function () {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 250) + 'px';
+      });
+
+      // Inicialización final
+      inicializarLoki();
+      bindFormSubmit();
+
+      // Pequeño feedback visual al escribir
+      textarea.addEventListener("input", () => {
+        if (!dbReady) {
+          interpretacionDiv.innerHTML = "Base de datos cargando... por favor espera";
+        } else if (textarea.value.trim() === "") {
+          interpretacionDiv.innerHTML = "Escribe un concepto complejo para explorar su semántica.";
+        }
+      });
+
+      // Nota: el nuevo chat en sidebar no tiene funcionalidad en esta demo, pero respetamos el diseño.
+    })();
+  </script>
+</body>
+
+</html>

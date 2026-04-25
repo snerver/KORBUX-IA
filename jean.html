@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Jean · Guiones audiovisuales</title>
+
+  <!-- Favicon (ruta corregida) -->
+  <link rel="icon" href="../assets/img/logo.png" type="image/png" />
+
+  <!-- LokiJS (base de datos local) -->
+  <script src="https://cdn.jsdelivr.net/npm/lokijs@1.5.12/build/lokijs.min.js"></script>
+
+  <!-- Estilos integrados — mismo diseño que index.html -->
+  <style>
+    /* ===== RESET & VARIABLES ===== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    }
+
+    :root {
+      --bg-body: #f9fafb;
+      --bg-nav: #ffffff;
+      --bg-sidebar: #f3f4f6;
+      --bg-chat: #ffffff;
+      --border-light: #e5e7eb;
+      --text-primary: #111827;
+      --text-secondary: #4b5563;
+      --text-muted: #6b7280;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --bubble-user: #e0f2fe;
+      --bubble-ai: #ffffff;
+      --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+      --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+      --radius-md: 0.75rem;
+      --radius-lg: 1rem;
+    }
+
+    body.dark {
+      --bg-body: #1e1e2f;
+      --bg-nav: #2a2a3c;
+      --bg-sidebar: #252537;
+      --bg-chat: #1a1a2a;
+      --border-light: #3a3a50;
+      --text-primary: #f1f5f9;
+      --text-secondary: #cbd5e1;
+      --text-muted: #94a3b8;
+      --bubble-user: #2d3a5e;
+      --bubble-ai: #2a2a3c;
+    }
+
+    body {
+      background-color: var(--bg-body);
+      color: var(--text-primary);
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      line-height: 1.5;
+      transition: background-color 0.2s, color 0.2s;
+    }
+
+    /* ===== NAVEGACIÓN LATERAL IZQUIERDA ===== */
+    .nav {
+      width: 88px;
+      background-color: var(--bg-nav);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 1.2rem 0.5rem;
+      border-right: 1px solid var(--border-light);
+      box-shadow: var(--shadow-sm);
+      flex-shrink: 0;
+      overflow-y: auto;
+    }
+
+    .logo {
+      font-weight: 700;
+      font-size: 1.4rem;
+      letter-spacing: -0.5px;
+      color: var(--accent);
+      text-decoration: none;
+      margin-bottom: 2rem;
+      padding: 0.25rem;
+      transition: opacity 0.2s;
+    }
+
+    .logo:hover {
+      opacity: 0.8;
+    }
+
+    .nav-icons {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      width: 100%;
+      align-items: center;
+      flex: 1;
+    }
+
+    .nav-icons a {
+      display: block;
+      width: 100%;
+      text-align: center;
+      padding: 0.6rem 0.2rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-decoration: none;
+      border-radius: 12px;
+      background-color: transparent;
+      transition: background-color 0.15s, color 0.15s;
+      word-break: break-word;
+    }
+
+    .nav-icons a:hover {
+      background-color: var(--border-light);
+      color: var(--text-primary);
+    }
+
+    .nav-icons a.active {
+      background-color: var(--accent);
+      color: white;
+    }
+
+    .nav-bottom {
+      margin-top: auto;
+      padding-top: 1rem;
+      width: 100%;
+    }
+
+    #theme {
+      width: 100%;
+      background: transparent;
+      border: 1px solid var(--border-light);
+      color: var(--text-primary);
+      padding: 0.5rem 0.2rem;
+      border-radius: 30px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    #theme:hover {
+      background-color: var(--border-light);
+    }
+
+    #theme span {
+      pointer-events: none;
+    }
+
+    /* ===== CONTENEDOR PRINCIPAL ===== */
+    .main {
+      display: flex;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 280px;
+      background-color: var(--bg-sidebar);
+      border-right: 1px solid var(--border-light);
+      display: flex;
+      flex-direction: column;
+      padding: 1.25rem 1rem;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+
+    #new-chat {
+      background-color: var(--accent);
+      color: white;
+      font-weight: 600;
+      border: none;
+      padding: 0.75rem 1rem;
+      border-radius: 30px;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      transition: background 0.2s;
+      box-shadow: var(--shadow-sm);
+    }
+
+    #new-chat:hover {
+      background-color: var(--accent-hover);
+    }
+
+    .recent-title {
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 0.75rem;
+      padding-left: 0.25rem;
+    }
+
+    #chats {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+
+    #chats li {
+      padding: 0.6rem 0.75rem;
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: background 0.15s;
+    }
+
+    #chats li:hover {
+      background-color: var(--border-light);
+    }
+
+    /* ===== ÁREA DE CHAT ===== */
+    .chat-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--bg-chat);
+      min-width: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .jean-container {
+      padding: 2rem 2.5rem;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .jean-header {
+      margin-bottom: 2rem;
+    }
+
+    .jean-header h2 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    #jean-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    #script-input {
+      min-height: 180px;
+      border-radius: 1.5rem;
+      padding: 1.2rem 1.5rem;
+      font-size: 1rem;
+      border: 1px solid var(--border-light);
+      background: var(--bg-body);
+      color: var(--text-primary);
+      resize: vertical;
+      box-shadow: var(--shadow-sm);
+      transition: border 0.15s, box-shadow 0.15s;
+    }
+
+    #script-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+    }
+
+    #generate-btn {
+      align-self: flex-start;
+      padding: 0.9rem 2.2rem;
+      border-radius: 40px;
+      border: none;
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      box-shadow: var(--shadow-sm);
+    }
+
+    #generate-btn:hover {
+      background: var(--accent-hover);
+      transform: translateY(-1px);
+    }
+
+    #script-output,
+    #video-output {
+      background: var(--bg-sidebar);
+      padding: 1.8rem;
+      border-radius: 1.5rem;
+      border: 1px solid var(--border-light);
+      margin-bottom: 2rem;
+    }
+
+    #script-output strong,
+    #video-output strong {
+      display: block;
+      margin-bottom: 1rem;
+      color: var(--accent);
+    }
+
+    #resultado-guion,
+    #video-placeholder {
+      min-height: 80px;
+      background: var(--bg-chat);
+      border-radius: 12px;
+      padding: 1.2rem;
+      margin-bottom: 1rem;
+      border: 1px dashed var(--border-light);
+    }
+
+    #video-placeholder {
+      min-height: 200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .log {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      body {
+        flex-direction: column;
+      }
+
+      .nav {
+        width: 100%;
+        height: auto;
+        flex-direction: row;
+        padding: 0.5rem 1rem;
+        border-right: none;
+        border-bottom: 1px solid var(--border-light);
+        overflow-x: auto;
+        justify-content: space-between;
+      }
+
+      .logo {
+        margin-bottom: 0;
+        margin-right: 0.5rem;
+        font-size: 1.3rem;
+      }
+
+      .nav-icons {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        flex: 1;
+        justify-content: flex-start;
+      }
+
+      .nav-icons a {
+        width: auto;
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+      }
+
+      .nav-bottom {
+        margin-top: 0;
+        padding-top: 0;
+        width: auto;
+      }
+
+      #theme {
+        width: auto;
+        padding: 0.4rem 1rem;
+      }
+
+      .main {
+        flex-direction: column;
+        height: calc(100vh - 70px);
+      }
+
+      .sidebar {
+        width: 100%;
+        max-height: 140px;
+        border-right: none;
+        border-bottom: 1px solid var(--border-light);
+        padding: 0.75rem;
+      }
+
+      .chat-area {
+        height: auto;
+        flex: 1;
+      }
+
+      .jean-container {
+        padding: 1.5rem 1rem;
+      }
+
+      #script-input {
+        min-height: 140px;
+      }
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background-color: var(--border-light);
+      border-radius: 20px;
+    }
+
+    *:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    button,
+    a {
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Barra lateral fija (navegación) -->
+  <nav class="nav" aria-label="Navegación principal" role="navigation">
+    <a class="logo" href="../index.html" aria-label="Korbux inicio">Korbux</a>
+
+    <!-- Accesos a agentes (activo en Jean) -->
+    <div class="nav-icons" aria-label="Agentes disponibles">
+      <a href="okuota.html" title="Okuota">Okuota</a>
+      <a href="Monet.html" title="Monet">Monet</a>
+      <a href="Ditters.html" title="Ditters">Ditters</a>
+      <a href="Jean.html" class="active" aria-current="page" title="Jean">Jean</a>
+      <a href="Lovelace.html" title="Lovelace">Lovelace</a>
+      <a href="Santa_olalla.html" title="Santa Olalla">Santa Olalla</a>
+      <a href="../Perfil.html" title="Perfil">Perfil</a>
+      <a href="../Historial.html" title="Historial">Historial</a>
+    </div>
+
+    <!-- Botón de tema -->
+    <div class="nav-bottom">
+      <button id="theme" type="button" aria-pressed="false" aria-label="Cambiar tema">
+        <span>Tema</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Área principal (sidebar + chat) -->
+  <main class="main" id="main-content">
+
+    <!-- Sidebar de chats recientes -->
+    <aside class="sidebar" aria-label="Chats recientes">
+      <button id="new-chat" type="button" aria-label="Crear nuevo chat">
+        <span>+</span> Nuevo Chat
+      </button>
+
+      <h2 class="recent-title" id="recent-chats-title">Chats recientes</h2>
+      <ul id="chats" aria-live="polite" aria-labelledby="recent-chats-title"></ul>
+    </aside>
+
+    <!-- Área de contenido Jean -->
+    <section class="chat-area" aria-label="Área de creación de guiones Jean">
+      <div class="jean-container">
+        <div class="jean-header">
+          <h2>🎬 Jean · Creación de guiones audiovisuales</h2>
+          <p style="color: var(--text-secondary); margin-top: 0.5rem;">Escribe tu idea para una serie, película o
+            documental.</p>
+        </div>
+
+        <form id="jean-form" autocomplete="off">
+          <textarea id="script-input" placeholder="Escribe aquí tu idea para una serie, película o documental..."
+            required></textarea>
+          <button id="generate-btn" type="submit">Generar guion</button>
+        </form>
+
+        <div id="script-output">
+          <strong>Guion generado:</strong>
+          <div id="resultado-guion">[esperando entrada...]</div>
+          <div class="log" id="registro-log"></div>
+        </div>
+
+        <!-- Sección de vídeo -->
+        <div id="video-output">
+          <strong>Vídeo generado:</strong>
+          <div id="video-placeholder">[aquí se mostrará el vídeo]</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Lógica JavaScript (LokiJS, tema, guiones, vídeo) -->
+  <script>
+    (function () {
+      // ---------- TEMA ----------
+      const themeBtn = document.getElementById('theme');
+      function initTheme() {
+        const savedTheme = localStorage.getItem('korbux-theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+          document.body.classList.add('dark');
+          themeBtn.setAttribute('aria-pressed', 'true');
+        } else {
+          themeBtn.setAttribute('aria-pressed', 'false');
+        }
+      }
+      initTheme();
+
+      themeBtn.addEventListener('click', () => {
+        const isDark = document.body.classList.toggle('dark');
+        themeBtn.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+        localStorage.setItem('korbux-theme', isDark ? 'dark' : 'light');
+      });
+
+      // ---------- BASE DE DATOS LOKIJS ----------
+      const db = new loki("korbux.json", {
+        autoload: true,
+        autosave: true,
+        autosaveInterval: 5000,
+        autoloadCallback: () => {
+          if (!db.getCollection("guiones")) {
+            db.addCollection("guiones");
+          }
+          if (!db.getCollection("auditoria")) {
+            db.addCollection("auditoria");
+          }
+        },
+      });
+
+      // Función de auditoría
+      function auditar(entry) {
+        const auditoria = db.getCollection("auditoria");
+        if (auditoria) {
+          auditoria.insert({
+            ...entry,
+            fecha: new Date().toISOString(),
+            modulo: "Jean",
+            usuario: "daniel_korbux"
+          });
+        }
+      }
+
+      // ---------- FUNCIÓN crearVideo (mantenida exactamente igual) ----------
+      window.crearVideo = function ({ tipo = "corto", duracion = "ilimitada", calidad = "HD", idioma = "español" }) {
+        const video = document.getElementById("video-placeholder");
+        video.innerHTML = `
+          <div>
+            <p><strong>Tipo:</strong> ${tipo}</p>
+            <p><strong>Duración:</strong> ${duracion}</p>
+            <p><strong>Calidad:</strong> ${calidad}</p>
+            <p><strong>Idioma de diálogos:</strong> ${idioma}</p>
+            <p>Simulación: vídeo ${tipo} generado con las especificaciones solicitadas.</p>
+          </div>
+        `;
+      };
+
+      // ---------- MANEJO DEL FORMULARIO ----------
+      document.getElementById("jean-form").addEventListener("submit", function (e) {
+        e.preventDefault();
+        const texto = document.getElementById("script-input").value.trim();
+        const salida = document.getElementById("resultado-guion");
+        const log = document.getElementById("registro-log");
+        const video = document.getElementById("video-placeholder");
+
+        if (!texto) return;
+
+        const guiones = db.getCollection("guiones");
+        const usuario = "daniel_korbux";
+
+        // Guardar guion en LokiJS
+        guiones.insert({
+          contenido: texto,
+          usuario,
+          fecha_registro: new Date().toISOString(),
+        });
+
+        // Auditoría
+        auditar({
+          tipo: "creacion",
+          campo: "guion",
+          nuevo: texto.substring(0, 50) + "..."
+        });
+
+        // Mostrar resultado
+        salida.innerHTML = `Guion almacenado: <em>${texto}</em>`;
+        log.innerHTML += `Nuevo guion registrado por ${usuario}<br>`;
+
+        // Simulación inicial de vídeo (usando la función crearVideo con parámetros por defecto)
+        crearVideo({ tipo: "corto", duracion: "ilimitada", calidad: "HD", idioma: "español" });
+      });
+
+      // Mejora: textarea autoajustable
+      const textarea = document.getElementById("script-input");
+      textarea.addEventListener("input", function () {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 300) + 'px';
+      });
+
+      // Ejemplo de uso de crearVideo (puede invocarse desde consola)
+      console.log('Función crearVideo disponible. Ejemplo: crearVideo({ tipo: "película", duracion: "120 min", calidad: "4K", idioma: "inglés" })');
+
+    })();
+  </script>
+</body>
+
+</html>
