@@ -1,8 +1,20 @@
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
 
-// Archivo donde se guardan los datos localmente
-const dbFile = path.join(__dirname, "korbux.json");
+// Resolución segura del directorio actual (compatible CJS y ESM)
+let currentDir: string;
+if (typeof __dirname !== "undefined") {
+  // Entorno CommonJS
+  currentDir = __dirname;
+} else {
+  // Entorno ES Modules: se calcula desde import.meta.url
+  const __filename = fileURLToPath(import.meta.url);
+  currentDir = path.dirname(__filename);
+}
+
+// Archivo donde se guardan los datos localmente (mismo directorio que este módulo)
+const dbFile = path.join(currentDir, "korbux.json");
 
 // Interfaces
 export interface User {
